@@ -34,7 +34,6 @@ sed -i "s/SECRET_KEY_BASE=.*/SECRET_KEY_BASE=$(openssl rand -hex 64)/" data/gree
 sed -i "s/PORT=.*/PORT=3080/" data/greenlight/.env
 ```
 
-
 Create a new .env file for the deployment based on the dotenv file included.
 
 ```
@@ -66,6 +65,7 @@ Respond yes to sharing the Email and IP
 
 Take the string given as a challenge and create a TXT record on your DNS (see the prerequisites). You should set up the Challenge as indicated.
 
+```
 Performing the following challenges:
 dns-01 challenge for gl.<DOMAIN_NAME>
 
@@ -78,10 +78,13 @@ XdFPEeAvHmJGjDmmXsqvNPjYC74U_wjZFcqv4IrlDFM
 Before continuing, verify the record is deployed.
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Press Enter to Continue
+```
 
 The record would be like:
 
+```
 gl.<DOMAIN_NAME>.	TXT	60	"XdFPEeAvHmJGjDmmXsqvNPjYC74U_wjZFcqv4IrlDFM"
+```
 
 Make sure to set 60 secs for the TTL, you may need to update it later and that will shorten the time you wait for the DNS to propagate.
 
@@ -129,3 +132,40 @@ sed -i "s/NGINX_HOSTNAME:.*/NGINX_HOSTNAME:5000/" data/nginx/sites.template-loca
 ```
 
 When keycloak is initialized, it also needs to be configured by adding a, and then set those values into the `data/greenlight/.env` file.
+
+The env variables that need to be added are:
+```
+OPENID_CONNECT_CLIENT_ID=
+OPENID_CONNECT_CLIENT_SECRET=
+OPENID_CONNECT_ISSUER=
+OPENID_CONNECT_REDIRECT=
+```
+
+## Setup
+### Using keycloak with greenlight using OIDC
+
+Log into Keycloak
+
+(Optional) Create a realm for greenlight by hovering "master" dropdown and clicking new realm:
+![image](https://user-images.githubusercontent.com/21375588/119866764-29a1e580-beeb-11eb-8a18-39370c39a5fb.png)
+
+In realm settings > Login, enable user registration and remember to click save.\
+In clients, click create and give an appropriate client id (Ex: `greenlight`)\
+Set the access type to confidential, and fill out redirect url and web origins.
+Ex configuration:
+![image](https://user-images.githubusercontent.com/21375588/119872156-2873b700-bef1-11eb-91f5-d1bc291a0466.png)
+Copy `Client ID` in the admin console on the same page and paste it into `greenlight/.env` under `OPENID_CONNECT_CLIENT_ID`\
+Under the same page/client, click on the credentials tab and copy and paste it into `greenlight/.env` under `OPENID_CONNECT_CLIENT_SECRET`
+
+Go back to the Realm settings on the sidebar and click on the link `OpenID Endpoint Configuration` where you will find the issuer.\
+Copy the `issuer` and paste it into `greenlight/.env` under `OPENID_CONNECT_ISSUER`\
+In addition, fill out the `OAUTH2_REDIRECT` with the appropriate URL.
+Ex sample:
+```
+OPENID_CONNECT_CLIENT_ID=greenlight
+OPENID_CONNECT_CLIENT_SECRET=mR5VCBMKQFmZlIATeTHniS42jHOKKWQf
+OPENID_CONNECT_ISSUER=https://kc.jesus.123it.ca/auth/realms/master
+OPENID_CONNECT_REDIRECT=https://gl.jesus.123it.ca/
+```
+
+Finally, restart the deployment and signing up using OIDC should be possible
