@@ -1,0 +1,28 @@
+# POSTGRES DATABASE URL
+# Must be in the format postgres://username:password@host:port
+DATABASE_URL=
+
+# REDIS CACHE URL
+# Must be in the format redis://host:port
+REDIS_URL=
+
+# The endpoint and secret for your BigBlueButton server.
+# Set these if you are running GreenLight on a single BigBlueButton server.
+# You can retrive these by running the following command on your BigBlueButton server:
+#
+#   bbb-conf --secret
+#
+BIGBLUEBUTTON_ENDPOINT=https://test-install.blindsidenetworks.com/bigbluebutton/
+BIGBLUEBUTTON_SECRET=8cd8ef52e8e101574e400365b55e11a6
+
+PORT=
+SECRET_KEY_BASE=
+RAILS_ENV=production
+RAILS_SERVE_STATIC_FILES=true
+
+RAILS_LOG_TO_STDOUT=true
+
+OPENID_CONNECT_CLIENT_ID=
+OPENID_CONNECT_CLIENT_SECRET=
+OPENID_CONNECT_ISSUER=
+OPENID_CONNECT_REDIRECT=
