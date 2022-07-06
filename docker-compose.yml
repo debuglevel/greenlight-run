@@ -1,0 +1,109 @@
+version: '3'
+
+services:
+  postgres:
+    image: postgres:14-alpine
+    container_name: postgres
+    restart: unless-stopped
+    ports:
+      - 5432:5432
+    volumes:
+      - ./data/postgres/14/database_data:/var/lib/postgresql/data
+    environment:
+      - PGUSER=postgres
+      - PGPASSWORD=password
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    logging:
+      driver: journald
+
+  redis:
+    image: redis:6.2-alpine
+    container_name: redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./data/redis/database_data:/data
+      - ./data/redis/conf/redis.conf:/usr/local/etc/redis/redis.conf
+      - ./data/certbot/conf/:/etc/letsencrypt
+    command: ["redis-server", "--appendonly", "yes"]
+
+  nginx:
+    image: nginx:1.23
+    container_name: nginx
+    restart: unless-stopped
+    volumes:
+      - ./log/nginx/:/var/log/nginx
+      - ./data/nginx/sites-common:/etc/nginx/sites-common
+      - ./data/nginx/sites.template-${SITES_TEMPLATE:-docker}:/etc/nginx/sites.template
+      - ./data/certbot/conf/:/etc/letsencrypt
+      - ./data/certbot/www/:/var/www/certbot
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - NGINX_HOSTNAME=${DOMAIN_NAME:-xlab.blindside-dev.com}
+    depends_on:
+      - greenlight
+    #   - keycloak
+    command: /bin/bash -c "envsubst '$$NGINX_HOSTNAME' < /etc/nginx/sites.template > /etc/nginx/conf.d/default.conf && exec nginx -g 'daemon off;'"
+    logging:
+      driver: journald
+
+  # certbot:
+  #   image: certbot/certbot
+  #   container_name: certbot
+  #   volumes:
+  #     - ./log/certbot/:/var/log/letsencrypt
+  #     - ./data/certbot/conf/:/etc/letsencrypt
+  #     - ./data/certbot/www/:/var/www/certbot
+  #   entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+
+  greenlight:
+    entrypoint: [bin/start]
+    image: ${GREENLIGHT_DOCKER_IMAGE:-bigbluebutton/greenlight:v3}
+    container_name: greenlight
+    restart: unless-stopped
+    ports:
+      - 3080
+    logging:
+      driver: journald
+    env_file: ./data/greenlight/.env
+    environment:
+      - DATABASE_URL=${DATABASE_URL:-postgres://postgres:password@postgres:5432}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - BIGBLUEBUTTON_ENDPOINT=${BIGBLUEBUTTON_ENDPOINT:-https://test-install.blindsidenetworks.com/bigbluebutton/}
+      - BIGBLUEBUTTON_SECRET=${BIGBLUEBUTTON_ENDPOINT:-8cd8ef52e8e101574e400365b55e11a6}
+      - PORT=${PORT:-3080}
+      - SECRET_KEY_BASE=${SECRET_KEY_BASE:-docker}
+      - RAILS_ENV=${RAILS_ENV:-production}
+      - RAILS_SERVE_STATIC_FILES=${RAILS_SERVE_STATIC_FILES:-true}
+    depends_on:
+      - postgres
+      - redis
+
+  # keycloak:
+  #   image: jboss/keycloak:16.1.1
+  #   container_name: keycloak
+  #   restart: unless-stopped
+  #   environment:
+  #     KEYCLOAK_USER: admin
+  #     KEYCLOAK_PASSWORD: adminadmin
+  #     DB_VENDOR: POSTGRES
+  #     DB_ADDR: postgres
+  #     DB_DATABASE: keycloakdb
+  #     DB_USER: postgres
+  #     DB_PASSWORD: password
+  #     PROXY_ADDRESS_FORWARDING: "true"
+  #   volumes:
+  #     - ./proxy/letsencrypt/live/kc.${DOMAIN_NAME:-xlab.blindside-dev.com}/cert.pem:/etc/x509/https/tls.crt
+  #     - ./proxy/letsencrypt/live/kc.${DOMAIN_NAME:-xlab.blindside-dev.com}/privkey.pem:/etc/x509/https/tls.key
+  #   depends_on:
+  #     - postgres
+  # #
+  # #   docker run  --name keycloak --net greenlight-multitenant_default -p 8080:8080 -e KEYCLOAK_USER=admin -e KEYCLOAK_PASSWORD=adminadmin -e DB_VENDOR=POSTGRES -e DB_ADDR=postgres -e DB_DATABASE=keycloak -e DB_USER=postgres -e DB_PASSWORD=password jboss/keycloak
+  # #   https://www.keycloak.org/docs/latest/server_installation/index.html#_setting-up-a-load-balancer-or-proxy
+  # #   https://stackoverflow.com/questions/47181821/using-keycloak-behind-a-reverse-proxy-could-not-open-admin-loginpage-because-mi

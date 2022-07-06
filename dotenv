@@ -1,0 +1,27 @@
+# REDIS_URL=
+# DATABASE_URL=
+#
+### Required when when specific repo or version (other than defaults) are needed
+GREENLIGHT_DOCKER_IMAGE=bigbluebutton/greenlight:v3
+#
+### Optional for postgres when using docker-compose
+# POSTGRES_USER=
+# POSTGRES_PASSWORD=
+#
+### Optional for init-letsencrypt.sh when using certbot for generating signed SSL certificates
+#LETSENCRYPT_EMAIL=
+#LETSENCRYPT_STAGING=0 # Set to 1 if you're testing your setup to avoid hitting request limits
+#
+### Optional for development when using different profiles
+# SITES_TEMPLATE=docker
+# Examples:
+#   docker <default>
+#   local
+
+### Optional for the deployment, but required when using init-letsencrypt.sh script
+# LETSENCRYPT_EMAIL=
+# LETSENCRYPT_STAGING=0
+#   Set to 1 if you're testing your setup to avoid hitting request limits
+
+DOMAIN_NAME=
+RAILS_LOG_TO_STDOUT=true

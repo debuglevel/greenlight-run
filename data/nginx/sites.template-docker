@@ -1,0 +1,63 @@
+#### For <gl.$NGINX_HOSTNAME>
+
+upstream greenlight-server {
+    server greenlight:3080;
+}
+
+server {
+    server_name gl.$NGINX_HOSTNAME;
+
+    listen 80;
+    listen [::]:80;
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+
+    ssl_certificate /etc/letsencrypt/live/gl.$NGINX_HOSTNAME/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/gl.$NGINX_HOSTNAME/privkey.pem;
+
+    location /cable {
+        proxy_pass  http://greenlight-server;
+
+        proxy_read_timeout 60s;
+        proxy_redirect off;
+
+        proxy_set_header  Host $http_host;
+
+        proxy_set_header  X-Real-IP $remote_addr;
+        proxy_set_header  X-Forwarded-For $proxy_add_x_forwarded_for;
+
+        proxy_set_header  X-Forwarded-Proto $scheme;
+
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade "websocket";
+        proxy_set_header Connection "upgrade";
+    }
+
+    location / {
+            proxy_pass  http://greenlight-server;
+
+            proxy_read_timeout 60s;
+            proxy_redirect off;
+
+            proxy_set_header  Host $http_host;
+
+            proxy_set_header  X-Real-IP $remote_addr;
+            proxy_set_header  X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header  Cookie "$http_cookie; ip=$remote_addr";
+
+            proxy_set_header  X-Forwarded-Proto $scheme;
+
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+
+            proxy_headers_hash_max_size 512;
+            proxy_headers_hash_bucket_size 128;
+
+            proxy_buffer_size          128k;
+            proxy_buffers              4 256k;
+            proxy_busy_buffers_size    256k;
+
+            rewrite ~/(.*)$ /$1 break;
+    }
+}

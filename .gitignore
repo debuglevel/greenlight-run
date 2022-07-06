@@ -1,0 +1,15 @@
+!.keep
+
+.env*
+
+/data/certbot/conf
+!/data/certbot/conf/.keep
+
+/data/postgres/db
+database_data*
+
+/data/redis/db
+
+/tmp*
+
+/log*
