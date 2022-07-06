@@ -52,12 +52,50 @@ Also, when using the `init-letsencrypt.sh` script, you should add the email.
 LETSENCRYPT_EMAIL=
 ```
 
-For using a SSL certificate signed by Let’s Encrypt, generate the certificates.
+## For using a SSL certificate signed by Let’s Encrypt, generate the certificates.
 
-Manual
+### Manual
 
+```
+certbot certonly --manual -d gl.<DOMAIN_NAME> --agree-tos --no-bootstrap --manual-public-ip-logging-ok --preferred-challenges=dns --email your@email.com --server https://acme-v02.api.letsencrypt.org/directory
+```
 
-Automated (on machines on the cloud holding a public IP and linked to a valid hostname)
+#### Validate the Let’s Encrypt challenge
+
+Respond yes to sharing the Email and IP
+
+Take the string given as a challenge and create a TXT record on your DNS (see the prerequisites). You should set up the Challenge as indicated.
+
+Performing the following challenges:
+dns-01 challenge for gl.<DOMAIN_NAME>
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Please deploy a DNS TXT record under the name
+_acme-challenge.gl.<DOMAIN_NAME> with the following value:
+
+XdFPEeAvHmJGjDmmXsqvNPjYC74U_wjZFcqv4IrlDFM
+
+Before continuing, verify the record is deployed.
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Press Enter to Continue
+
+The record would be like:
+
+gl.<DOMAIN_NAME>.	TXT	60	"XdFPEeAvHmJGjDmmXsqvNPjYC74U_wjZFcqv4IrlDFM"
+
+Make sure to set 60 secs for the TTL, you may need to update it later and that will shorten the time you wait for the DNS to propagate.
+
+Wait for 60 secs before hitting <Enter> on the console.
+
+Now repeat the same procedure for `kc.<DOMAIN_NAME>`
+
+Once that is done, you can copy the letsencrypt certificates to `data/certbot/config`
+
+```
+cp -R /etc/letsencrypt/config/* data/certbot/config
+```
+
+### Automated (on machines on the cloud holding a public IP and linked to a valid hostname)
 ```
 ./init-letsencrypt.sh
 ```
