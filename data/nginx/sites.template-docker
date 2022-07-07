@@ -1,7 +1,7 @@
 #### For <gl.$NGINX_HOSTNAME>
 
 upstream greenlight-server {
-    server greenlight:3080;
+    server greenlight:3000;
 }
 
 server {
