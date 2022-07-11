@@ -65,18 +65,7 @@ services:
     restart: unless-stopped
     logging:
       driver: journald
-    ports:
-      - ${PORT:-3000}
     env_file: ./data/greenlight/.env
-    environment:
-      - DATABASE_URL=${DATABASE_URL:-postgres://postgres:password@postgres:5432}
-      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
-      - BIGBLUEBUTTON_ENDPOINT=${BIGBLUEBUTTON_ENDPOINT:-https://test-install.blindsidenetworks.com/bigbluebutton/}
-      - BIGBLUEBUTTON_SECRET=${BIGBLUEBUTTON_ENDPOINT:-8cd8ef52e8e101574e400365b55e11a6}
-      - PORT=${PORT:-3000}
-      - SECRET_KEY_BASE=${SECRET_KEY_BASE:-docker}
-      - RAILS_ENV=${RAILS_ENV:-production}
-      - RAILS_SERVE_STATIC_FILES=${RAILS_SERVE_STATIC_FILES:-true}
     depends_on:
       - postgres
       - redis
