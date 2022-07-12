@@ -1,9 +1,21 @@
 #!/bin/bash
 
-if ! [ -x "$(command -v docker compose)" ]; then
-  echo 'Error: docker-compose is not installed.' >&2
+if [ `id -u` -ne 0 ]
+  then echo "Please run as root"
   exit 1
 fi
+
+if [ -x "$(command -v docker compose)" ]; then
+  DOCKER_COMPOSE_CMD="docker compose"
+else if [ -x "$(command -v docker-compose)" ]; then
+  DOCKER_COMPOSE_CMD="docker-compose"
+else
+  echo 'Error: Neither docker compose nor docker-compose are installed.' >&2
+  exit 1
+fi fi
+echo $DOCKER_COMPOSE_CMD
+`$DOCKER_COMPOSE_CMD`
+exit
 
 # Absolute path to this script, e.g. /home/user/bin/foo.sh
 SCRIPT=$(readlink -f "$0")
@@ -34,7 +46,7 @@ if [ "$STATUS" != "$NEW_STATUS" ]; then
 fi
 
 cd $SCRIPT_PATH/..
-docker compose down
+`$DOCKER_COMPOSE_CMD` down
 
 # Remove dangling images if any
 DOCKER_DANGLING_IMAGES=$(docker images -f dangling=true -q)
@@ -42,4 +54,4 @@ if [[ ! -z "$DOCKER_DANGLING_IMAGES" ]]; then
   docker rmi $DOCKER_DANGLING_IMAGES
 fi
 
-docker compose up -d
+`$DOCKER_COMPOSE_CMD` up -d

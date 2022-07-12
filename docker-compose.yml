@@ -66,6 +66,8 @@ services:
     logging:
       driver: journald
     env_file: ./data/greenlight/.env
+    volumes:
+      - ./data/greenlight/bin/start:/usr/src/app/bin/start
     depends_on:
       - postgres
       - redis
@@ -84,8 +86,8 @@ services:
       DB_PASSWORD: password
       PROXY_ADDRESS_FORWARDING: "true"
     volumes:
-      - ./proxy/letsencrypt/live/kc.${DOMAIN_NAME:-xlab.blindside-dev.com}/cert.pem:/etc/x509/https/tls.crt
-      - ./proxy/letsencrypt/live/kc.${DOMAIN_NAME:-xlab.blindside-dev.com}/privkey.pem:/etc/x509/https/tls.key
+      - ./data/proxy/letsencrypt/live/kc.${DOMAIN_NAME:-xlab.blindside-dev.com}/cert.pem:/etc/x509/https/tls.crt
+      - ./data/proxy/letsencrypt/live/kc.${DOMAIN_NAME:-xlab.blindside-dev.com}/privkey.pem:/etc/x509/https/tls.key
     depends_on:
       - postgres
 
