@@ -21,9 +21,15 @@ if [[ -z "$LETSENCRYPT_EMAIL" ]]; then
   exit 1
 fi
 
+if [[ -z $DOMAIN_NAME ]]; then
+  echo "DOMAIN_NAME env variable is not set in .env ."
+  exit 1
+fi
+
+
 usage() {
   echo -e "Initializes letsencrypt certificates for Nginx proxy container\n"
-  echo -e "Usage: $0 [-z|-r|-h]\n"
+  echo -e "Usage: $0 [-n|-r|-h]\n"
   echo "  -n|--non-interactive  Enable non interactive mode"
   echo "  -r|--replace          Replace existing certificates without asking"
   echo "  -h|--help             Show usage information"
@@ -44,13 +50,22 @@ do
     esac
 done
 
-echo $URL_HOST
+# Presetting the enviroment
+echo "### Stopping Greenlight services..."
+docker-compose down
+echo
 
-domains=($URL_HOST)
+echo "### Preparing enviroment..."
+IFS=' '
+GL_HOSTNAME=${GL_HOSTNAME:-"gl"}
+KC_HOSTNAME=${KC_HOSTNAME:-"kc"}
+domains="$GL_HOSTNAME.$DOMAIN_NAME $KC_HOSTNAME.$DOMAIN_NAME"
+domains=($domains)
 rsa_key_size=4096
 data_path="./data/certbot"
 email="$LETSENCRYPT_EMAIL" # Adding a valid address is strongly recommended.
 staging=${LETSENCRYPT_STAGING:-0}
+echo
 
 if [ -d "$data_path" ] && [ "$replaceExisting" -eq 0 ]; then
     if [ "$interactive" -eq 0 ]; then
@@ -72,35 +87,12 @@ if [ ! -e "$data_path/conf/options-ssl-nginx.conf" ] || [ ! -e "$data_path/conf/
   echo
 fi
 
-echo "### Creating dummy certificate for $domains ..."
-path="/etc/letsencrypt/live/$domains"
-mkdir -p "$data_path/conf/live/$domains"
-docker-compose run --rm --entrypoint "\
-  openssl req -x509 -nodes -newkey rsa:2048 -days 1\
-    -keyout '$path/privkey.pem' \
-    -out '$path/fullchain.pem' \
-    -subj '/CN=localhost'" certbot
+echo "### Starting scalelite-proxy ..."
+docker-compose up --force-recreate -d scalelite-proxy
 echo
-
-echo "### Starting nginx ..."
-docker-compose up --force-recreate -d nginx
-echo
-
-echo "### Deleting dummy certificate for $domains ..."
-docker-compose run --rm --entrypoint "\
-  rm -Rf /etc/letsencrypt/live/$domains && \
-  rm -Rf /etc/letsencrypt/archive/$domains && \
-  rm -Rf /etc/letsencrypt/renewal/$domains.conf" certbot
-echo
-
 
 echo "### Requesting Let's Encrypt certificate for $domains ..."
-#Join $domains to -d args
-domain_args=""
-for domain in "${domains[@]}"; do
-  domain_args="$domain_args -d $domain"
-done
-
+### Preparing args:
 # Select appropriate email arg
 case "$email" in
   "") email_arg="--register-unsafely-without-email" ;;
@@ -108,9 +100,17 @@ case "$email" in
 esac
 
 # Enable staging mode if needed
-if [ $staging != "0" ]; then staging_arg="--staging"; fi
+if [ $staging != "0" ]; then
+  staging_arg="--staging"
+  echo "-> Running in staging mode."
+fi
 
-docker-compose run --rm --entrypoint "\
+docker-compose restart nginx
+
+for domain in ${domains[@]}; do
+  domain_args="-d '$domain'"
+  echo "-> Requesting Let's Encrypt certificate for $domain ..."
+  docker-compose run --rm --entrypoint "\
   certbot certonly --webroot -w /var/www/certbot \
     $staging_arg \
     $([ "$interactive" -ne 1 ] && echo '--non-interactive') \
@@ -120,7 +120,12 @@ docker-compose run --rm --entrypoint "\
     --agree-tos \
     --debug-challenges \
     --force-renewal" certbot
+  echo
+done
 echo
 
 echo "### Reloading nginx..."
 docker-compose exec $([ "$interactive" -ne 1 ] && echo "-T") nginx nginx -s reload
+
+echo "### Stopping Greenlight services..."
+docker-compose down
