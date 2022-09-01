@@ -82,8 +82,8 @@ docker-compose run --rm --entrypoint "\
     -subj '/CN=localhost'" certbot
 echo
 
-echo "### Starting scalelite-proxy ..."
-docker-compose up --force-recreate -d scalelite-proxy
+echo "### Starting nginx ..."
+docker-compose up --force-recreate -d nginx
 echo
 
 echo "### Deleting dummy certificate for $domains ..."
@@ -122,5 +122,5 @@ docker-compose run --rm --entrypoint "\
     --force-renewal" certbot
 echo
 
-echo "### Reloading scalelite-proxy..."
-docker-compose exec $([ "$interactive" -ne 1 ] && echo "-T") scalelite-proxy nginx -s reload
+echo "### Reloading nginx..."
+docker-compose exec $([ "$interactive" -ne 1 ] && echo "-T") nginx nginx -s reload
