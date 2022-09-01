@@ -39,11 +39,13 @@ services:
       - "80:80"
       - "443:443"
     environment:
-      - NGINX_HOSTNAME=${DOMAIN_NAME:-xlab.blindside-dev.com}
+      - NGINX_DOMAIN=${DOMAIN_NAME:-xlab.blindside-dev.com}
+      - GL_HOSTNAME=$GL_HOSTNAME
+      - KC_HOSTNAME=$KC_HOSTNAME
     depends_on:
       - greenlight
       - keycloak
-    command: /bin/bash -c "envsubst '$$NGINX_HOSTNAME' < /etc/nginx/sites.template > /etc/nginx/conf.d/default.conf && while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g 'daemon off;'"
+    command: /bin/bash -c "envsubst '$$NGINX_DOMAIN,$$GL_HOSTNAME,$$KC_HOSTNAME' < /etc/nginx/sites.template > /etc/nginx/conf.d/default.conf && while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g 'daemon off;'"
 
   certbot:
     image: certbot/certbot
@@ -85,8 +87,8 @@ services:
       PROXY_ADDRESS_FORWARDING: "true"
     volumes:
       - ./data/certbot/conf/:/etc/letsencrypt
-      #- ./data/certbot/conf/live/kc.${DOMAIN_NAME:-xlab.blindside-dev.com}/cert.pem:/etc/x509/https/tls.crt
-      #- ./data/certbot/conf/live/kc.${DOMAIN_NAME:-xlab.blindside-dev.com}/privkey.pem:/etc/x509/https/tls.key
+      #- ./data/certbot/conf/live/$KC_HOSTNAME.${DOMAIN_NAME:-xlab.blindside-dev.com}/cert.pem:/etc/x509/https/tls.crt
+      #- ./data/certbot/conf/live/$KC_HOSTNAME.${DOMAIN_NAME:-xlab.blindside-dev.com}/privkey.pem:/etc/x509/https/tls.key
     depends_on:
       - postgres
 

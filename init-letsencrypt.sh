@@ -1,12 +1,12 @@
 #!/bin/bash
 
 if ! [ -x "$(command -v docker-compose)" ]; then
-  echo 'Error: docker-compose is not installed.' >&2
+  >&2 echo 'Error: docker-compose is not installed.' >&2
   exit 1
 fi
 
 if [[ ! -f ./.env ]]; then
-  echo ".env file does not exist on your filesystem."
+  >&2 echo ".env file does not exist on your filesystem."
   exit 1
 fi
 
@@ -17,22 +17,27 @@ if [ -f .env ]; then
 fi
 
 if [[ -z "$LETSENCRYPT_EMAIL" ]]; then
-  echo "Settung up an email for letsencrypt certificates is strongly recommended."
+  >&2 echo "Settung up an email for letsencrypt certificates is strongly recommended."
   exit 1
 fi
 
 if [[ -z $DOMAIN_NAME ]]; then
-  echo "DOMAIN_NAME env variable is not set in .env ."
+  >&2 echo "DOMAIN_NAME env variable is not set in .env ."
   exit 1
 fi
 
+if [[ -z $GL_HOSTNAME ]] && [[ -z $KC_HOSTNAME ]]; then
+  >&2 echo "NO FQDN is set."
+  exit 1
+fi
 
+# Functions
 usage() {
-  echo -e "Initializes letsencrypt certificates for Nginx proxy container\n"
-  echo -e "Usage: $0 [-n|-r|-h]\n"
-  echo "  -n|--non-interactive  Enable non interactive mode"
-  echo "  -r|--replace          Replace existing certificates without asking"
-  echo "  -h|--help             Show usage information"
+  >&2 echo -e "Initializes letsencrypt certificates for Nginx proxy container\n"
+  >&2 echo -e "Usage: $0 [-n|-r|-h]\n"
+  >&2 echo "  -n|--non-interactive  Enable non interactive mode"
+  >&2 echo "  -r|--replace          Replace existing certificates without asking"
+  >&2 echo "  -h|--help             Show usage information"
   exit 1
 }
 
@@ -56,10 +61,17 @@ docker-compose down
 echo
 
 echo "### Preparing enviroment..."
+
+if [[ ! -z $GL_HOSTNAME ]]; then
+  GL_FQDN="$GL_HOSTNAME.$DOMAIN_NAME"
+fi
+
+if [[ ! -z $KC_HOSTNAME ]]; then
+  KC_FQDN="$KC_HOSTNAME.$DOMAIN_NAME"
+fi
+
 IFS=' '
-GL_HOSTNAME=${GL_HOSTNAME:-"gl"}
-KC_HOSTNAME=${KC_HOSTNAME:-"kc"}
-domains="$GL_HOSTNAME.$DOMAIN_NAME $KC_HOSTNAME.$DOMAIN_NAME"
+domains="$GL_FQDN $KC_FQDN"
 domains=($domains)
 rsa_key_size=4096
 data_path="./data/certbot"
@@ -91,7 +103,7 @@ echo "### Starting scalelite-proxy ..."
 docker-compose up --force-recreate -d scalelite-proxy
 echo
 
-echo "### Requesting Let's Encrypt certificate for $domains ..."
+echo "### Requesting Let's Encrypt certificate for ${domains[@]} ..."
 ### Preparing args:
 # Select appropriate email arg
 case "$email" in

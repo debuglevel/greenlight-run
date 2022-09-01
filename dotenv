@@ -12,5 +12,11 @@ SITES_TEMPLATE=docker
 #   docker <default>
 #   local
 #
+### Greenlight hostname that with the DOMAIN_NAME forms its FQDN
+GL_HOSTNAME=gl
+#
+### Keycloak hostname that with the DOMAIN_NAME forms its FQDN
+KC_HOSTNAME=kc
+#
 ### The public domain name that GL3 and keycloak will use, this has to be a valid domain name in the DNS network that resolves to your system 
 DOMAIN_NAME=
