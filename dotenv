@@ -4,7 +4,7 @@ GREENLIGHT_DOCKER_IMAGE=bigbluebutton/greenlight:v3
 ### Required for init-letsencrypt.sh when using certbot for generating signed SSL certificates
 LETSENCRYPT_EMAIL=
 ### Set to 1 if you're testing your setup to avoid hitting Letsencrypt request limits
-LETSENCRYPT_STAGING=0
+LETSENCRYPT_STAGING=1
 #
 ### Optional for development when using different profiles
 SITES_TEMPLATE=docker
@@ -20,3 +20,10 @@ KC_HOSTNAME=kc
 #
 ### The public domain name that GL3 and keycloak will use, this has to be a valid domain name in the DNS network that resolves to your system 
 DOMAIN_NAME=
+#
+### Postgres variables:
+POSTGRES_PASSWORD=
+#
+### Keycloak variables:
+KEYCLOAK_USER=admin
+KEYCLOAK_PASSWORD=

@@ -1,7 +1,7 @@
 ### POSTGRES DATABASE URL
 # Must be in the format postgres://username:password@host:port
 #   E.g. postgres://postgres:password@postgres:5432
-DATABASE_URL=postgres://postgres:password@postgres:5432
+DATABASE_URL=
 #
 ### REDIS CACHE URL
 # Must be in the format redis://host:port

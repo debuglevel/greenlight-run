@@ -55,11 +55,6 @@ do
     esac
 done
 
-# Presetting the enviroment
-echo "### Stopping Greenlight services..."
-docker-compose down
-echo
-
 echo "### Preparing enviroment..."
 
 if [[ ! -z $GL_HOSTNAME ]]; then
@@ -76,16 +71,19 @@ domains=($domains)
 rsa_key_size=4096
 data_path="./data/certbot"
 email="$LETSENCRYPT_EMAIL" # Adding a valid address is strongly recommended.
-staging=${LETSENCRYPT_STAGING:-0}
+staging=${LETSENCRYPT_STAGING:-1}
+echo "-> Prepared enviroment successfully ✔"
+echo "-> Requesting Let's Encrypt certificate for ${domains[@]} for the email address of '$email' ..."
+echo "-> Certificate files will be stored under '$data_path'."
 echo
 
 if [ -d "$data_path" ] && [ "$replaceExisting" -eq 0 ]; then
     if [ "$interactive" -eq 0 ]; then
-      echo "Certificates already exist."
+      echo "-> Certificates already exist."
       exit
     fi
 
-    read -p "Existing data found for $domains. Continue and replace existing certificate? (y/N) " decision
+    read -p "Existing data found. Continue and replace existing certificate? (y/N) " decision
     if [ "$decision" != "Y" ] && [ "$decision" != "y" ]; then
       exit
     fi
@@ -98,10 +96,6 @@ if [ ! -e "$data_path/conf/options-ssl-nginx.conf" ] || [ ! -e "$data_path/conf/
   curl -s https://raw.githubusercontent.com/certbot/certbot/master/certbot/certbot/ssl-dhparams.pem > "$data_path/conf/ssl-dhparams.pem"
   echo
 fi
-
-echo "### Starting scalelite-proxy ..."
-docker-compose up --force-recreate -d scalelite-proxy
-echo
 
 echo "### Requesting Let's Encrypt certificate for ${domains[@]} ..."
 ### Preparing args:
@@ -134,10 +128,3 @@ for domain in ${domains[@]}; do
     --force-renewal" certbot
   echo
 done
-echo
-
-echo "### Reloading nginx..."
-docker-compose exec $([ "$interactive" -ne 1 ] && echo "-T") nginx nginx -s reload
-
-echo "### Stopping Greenlight services..."
-docker-compose down
