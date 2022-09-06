@@ -1,12 +1,19 @@
 #!/bin/bash
 
-if ! [ -x "$(command -v docker-compose)" ]; then
-  >&2 echo 'Error: docker-compose is not installed.' >&2
+if docker compose version &> /dev/null; then
+  composePlugin=1
+  echo "-> Detected docker compose plugin ✔"
+elif docker-compose version &> /dev/null; then
+  composePlugin=0
+  echo "-> Unable to detect docker compose plugin 🛑"
+  echo "-> Detected docker-compose utility ✔"
+else
+  >&2 echo 'No "docker-compose" or "docker compose" is installed ⛔'
   exit 1
 fi
 
 if [[ ! -f ./.env ]]; then
-  >&2 echo ".env file does not exist on your filesystem."
+  >&2 echo ".env file does not exist on your filesystem ⛔"
   exit 1
 fi
 
@@ -17,17 +24,17 @@ if [ -f .env ]; then
 fi
 
 if [[ -z "$LETSENCRYPT_EMAIL" ]]; then
-  >&2 echo "Settung up an email for letsencrypt certificates is strongly recommended."
+  >&2 echo "Setting up an email for letsencrypt certificates is strongly recommended ❗"
   exit 1
 fi
 
 if [[ -z $DOMAIN_NAME ]]; then
-  >&2 echo "DOMAIN_NAME env variable is not set in .env ."
+  >&2 echo "DOMAIN_NAME env variable is not set in .env ⛔"
   exit 1
 fi
 
 if [[ -z $GL_HOSTNAME ]] && [[ -z $KC_HOSTNAME ]]; then
-  >&2 echo "NO FQDN is set."
+  >&2 echo "NO FQDN is set ⛔"
   exit 1
 fi
 
@@ -39,6 +46,16 @@ usage() {
   >&2 echo "  -r|--replace          Replace existing certificates without asking"
   >&2 echo "  -h|--help             Show usage information"
   exit 1
+}
+
+docker_compose() {
+  if [[ $composePlugin == 1 ]]; then
+    docker compose "$@"
+  else
+    docker-compose "$@"
+  fi
+
+  return $?
 }
 
 interactive=1
@@ -73,8 +90,8 @@ data_path="./data/certbot"
 email="$LETSENCRYPT_EMAIL" # Adding a valid address is strongly recommended.
 staging=${LETSENCRYPT_STAGING:-1}
 echo "-> Prepared enviroment successfully ✔"
-echo "-> Requesting Let's Encrypt certificate for ${domains[@]} for the email address of '$email' ..."
-echo "-> Certificate files will be stored under '$data_path'."
+echo "-> Requesting Let's Encrypt certificate for ${domains[@]} for the email address of '$email' ⏳"
+echo "-> Certificate files will be stored under '$data_path' ❕"
 echo
 
 if [ -d "$data_path" ] && [ "$replaceExisting" -eq 0 ]; then
@@ -83,7 +100,7 @@ if [ -d "$data_path" ] && [ "$replaceExisting" -eq 0 ]; then
       exit
     fi
 
-    read -p "Existing data found. Continue and replace existing certificate? (y/N) " decision
+    read -p "Existing data found. Continue and replace existing certificate? (y/N) ❔ " decision
     if [ "$decision" != "Y" ] && [ "$decision" != "y" ]; then
       exit
     fi
@@ -97,7 +114,7 @@ if [ ! -e "$data_path/conf/options-ssl-nginx.conf" ] || [ ! -e "$data_path/conf/
   echo
 fi
 
-echo "### Requesting Let's Encrypt certificate for ${domains[@]} ..."
+echo "### Requesting Let's Encrypt certificate for ${domains[@]} ⏳"
 ### Preparing args:
 # Select appropriate email arg
 case "$email" in
@@ -108,15 +125,15 @@ esac
 # Enable staging mode if needed
 if [ $staging != "0" ]; then
   staging_arg="--staging"
-  echo "-> Running in staging mode."
+  echo "-> Running in staging mode 🟡"
 fi
 
-docker-compose restart nginx
+docker_compose restart nginx
 
 for domain in ${domains[@]}; do
   domain_args="-d '$domain'"
-  echo "-> Requesting Let's Encrypt certificate for $domain ..."
-  docker-compose run --rm --entrypoint "\
+  echo "-> Requesting Let's Encrypt certificate for $domain ⏳"
+  docker_compose run --rm --entrypoint "\
   certbot certonly --webroot -w /var/www/certbot \
     $staging_arg \
     $([ "$interactive" -ne 1 ] && echo '--non-interactive') \
