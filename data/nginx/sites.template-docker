@@ -1,27 +1,19 @@
-#### For <$GL_HOSTNAME.$NGINX_DOMAIN>
+#### For <gl.$NGINX_HOSTNAME>
 
 upstream greenlight-server {
     server greenlight:3000;
 }
 
 server {
-    server_name $GL_HOSTNAME.$NGINX_DOMAIN;
+    server_name gl.$NGINX_HOSTNAME;
 
     listen 80;
     listen [::]:80;
-    #listen 443 ssl http2;
-    #listen [::]:443 ssl http2;
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
 
-    #ssl_certificate /etc/letsencrypt/live/$GL_HOSTNAME.$NGINX_DOMAIN/fullchain.pem;
-    #ssl_certificate_key /etc/letsencrypt/live/$GL_HOSTNAME.$NGINX_DOMAIN/privkey.pem;
-
-    #####################################################
-    ### FOR ACME CHALLENGES
-    location ^~ /.well-known/acme-challenge/ {
-        alias /var/www/certbot/.well-known/acme-challenge/;
-    }
-    ### END ACME CHALLENGES
-    #####################################################
+    ssl_certificate /etc/letsencrypt/live/gl.$NGINX_HOSTNAME/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/gl.$NGINX_HOSTNAME/privkey.pem;
 
     location /cable {
         proxy_pass  http://greenlight-server;
@@ -70,31 +62,23 @@ server {
     }
 }
 
-#### For <$KC_HOSTNAME.$NGINX_DOMAIN>
+#### For <kc.$NGINX_HOSTNAME>
 
 upstream keycloak-server {
     server keycloak:8080;
 }
 
 server {
-    server_name $KC_HOSTNAME.$NGINX_DOMAIN;
+    server_name kc.$NGINX_HOSTNAME;
 
     listen 80;
     listen [::]:80;
-    #listen 443 ssl;
-    #listen [::]:443;
+    listen 443 ssl;
+    listen [::]:443;
 
     ## Configuration for Letsencrypt SSL Certificate
-    #ssl_certificate /etc/letsencrypt/live/$KC_HOSTNAME.$NGINX_DOMAIN/fullchain.pem;
-    #ssl_certificate_key /etc/letsencrypt/live/$KC_HOSTNAME.$NGINX_DOMAIN/privkey.pem;
-
-    #####################################################
-    ### FOR ACME CHALLENGES
-    location ^~ /.well-known/acme-challenge/ {
-        alias /var/www/certbot/.well-known/acme-challenge/;
-    }
-    ### END ACME CHALLENGES
-    #####################################################
+    ssl_certificate /etc/letsencrypt/live/kc.$NGINX_HOSTNAME/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/kc.$NGINX_HOSTNAME/privkey.pem;
 
     location / {
         proxy_pass  http://keycloak-server;
