@@ -1,12 +1,19 @@
 #!/bin/bash
 
-if ! [ -x "$(command -v docker-compose)" ]; then
-  echo 'Error: docker-compose is not installed.' >&2
+if docker compose version &> /dev/null; then
+  composePlugin=1
+  echo "-> Detected docker compose plugin ✔"
+elif docker-compose version &> /dev/null; then
+  composePlugin=0
+  echo "-> Unable to detect docker compose plugin 🛑"
+  echo "-> Detected docker-compose utility ✔"
+else
+  >&2 echo 'No "docker-compose" or "docker compose" is installed ⛔'
   exit 1
 fi
 
 if [[ ! -f ./.env ]]; then
-  echo ".env file does not exist on your filesystem."
+  >&2 echo ".env file does not exist on your filesystem ⛔"
   exit 1
 fi
 
@@ -17,17 +24,38 @@ if [ -f .env ]; then
 fi
 
 if [[ -z "$LETSENCRYPT_EMAIL" ]]; then
-  echo "Settung up an email for letsencrypt certificates is strongly recommended."
+  >&2 echo "Setting up an email for letsencrypt certificates is strongly recommended ❗"
   exit 1
 fi
 
-usage() {
-  echo -e "Initializes letsencrypt certificates for Nginx proxy container\n"
-  echo -e "Usage: $0 [-z|-r|-h]\n"
-  echo "  -n|--non-interactive  Enable non interactive mode"
-  echo "  -r|--replace          Replace existing certificates without asking"
-  echo "  -h|--help             Show usage information"
+if [[ -z $DOMAIN_NAME ]]; then
+  >&2 echo "DOMAIN_NAME env variable is not set in .env ⛔"
   exit 1
+fi
+
+if [[ -z $GL_HOSTNAME ]] && [[ -z $KC_HOSTNAME ]]; then
+  >&2 echo "NO FQDN is set ⛔"
+  exit 1
+fi
+
+# Functions
+usage() {
+  >&2 echo -e "Initializes letsencrypt certificates for Nginx proxy container\n"
+  >&2 echo -e "Usage: $0 [-n|-r|-h]\n"
+  >&2 echo "  -n|--non-interactive  Enable non interactive mode"
+  >&2 echo "  -r|--replace          Replace existing certificates without asking"
+  >&2 echo "  -h|--help             Show usage information"
+  exit 1
+}
+
+docker_compose() {
+  if [[ $composePlugin == 1 ]]; then
+    docker compose "$@"
+  else
+    docker-compose "$@"
+  fi
+
+  return $?
 }
 
 interactive=1
@@ -44,21 +72,35 @@ do
     esac
 done
 
-echo $URL_HOST
+echo "### Preparing enviroment..."
 
-domains=($URL_HOST)
+if [[ ! -z $GL_HOSTNAME ]]; then
+  GL_FQDN="$GL_HOSTNAME.$DOMAIN_NAME"
+fi
+
+if [[ ! -z $KC_HOSTNAME ]]; then
+  KC_FQDN="$KC_HOSTNAME.$DOMAIN_NAME"
+fi
+
+IFS=' '
+domains="$GL_FQDN $KC_FQDN"
+domains=($domains)
 rsa_key_size=4096
 data_path="./data/certbot"
 email="$LETSENCRYPT_EMAIL" # Adding a valid address is strongly recommended.
-staging=${LETSENCRYPT_STAGING:-0}
+staging=${LETSENCRYPT_STAGING:-1}
+echo "-> Prepared enviroment successfully ✔"
+echo "-> Requesting Let's Encrypt certificate for ${domains[@]} for the email address of '$email' ⏳"
+echo "-> Certificate files will be stored under '$data_path' ❕"
+echo
 
 if [ -d "$data_path" ] && [ "$replaceExisting" -eq 0 ]; then
     if [ "$interactive" -eq 0 ]; then
-      echo "Certificates already exist."
+      echo "-> Certificates already exist."
       exit
     fi
 
-    read -p "Existing data found for $domains. Continue and replace existing certificate? (y/N) " decision
+    read -p "Existing data found. Continue and replace existing certificate? (y/N) ❔ " decision
     if [ "$decision" != "Y" ] && [ "$decision" != "y" ]; then
       exit
     fi
@@ -72,35 +114,8 @@ if [ ! -e "$data_path/conf/options-ssl-nginx.conf" ] || [ ! -e "$data_path/conf/
   echo
 fi
 
-echo "### Creating dummy certificate for $domains ..."
-path="/etc/letsencrypt/live/$domains"
-mkdir -p "$data_path/conf/live/$domains"
-docker-compose run --rm --entrypoint "\
-  openssl req -x509 -nodes -newkey rsa:2048 -days 1\
-    -keyout '$path/privkey.pem' \
-    -out '$path/fullchain.pem' \
-    -subj '/CN=localhost'" certbot
-echo
-
-echo "### Starting nginx ..."
-docker-compose up --force-recreate -d nginx
-echo
-
-echo "### Deleting dummy certificate for $domains ..."
-docker-compose run --rm --entrypoint "\
-  rm -Rf /etc/letsencrypt/live/$domains && \
-  rm -Rf /etc/letsencrypt/archive/$domains && \
-  rm -Rf /etc/letsencrypt/renewal/$domains.conf" certbot
-echo
-
-
-echo "### Requesting Let's Encrypt certificate for $domains ..."
-#Join $domains to -d args
-domain_args=""
-for domain in "${domains[@]}"; do
-  domain_args="$domain_args -d $domain"
-done
-
+echo "### Requesting Let's Encrypt certificate for ${domains[@]} ⏳"
+### Preparing args:
 # Select appropriate email arg
 case "$email" in
   "") email_arg="--register-unsafely-without-email" ;;
@@ -108,9 +123,17 @@ case "$email" in
 esac
 
 # Enable staging mode if needed
-if [ $staging != "0" ]; then staging_arg="--staging"; fi
+if [ $staging != "0" ]; then
+  staging_arg="--staging"
+  echo "-> Running in staging mode 🟡"
+fi
 
-docker-compose run --rm --entrypoint "\
+docker_compose restart nginx
+
+for domain in ${domains[@]}; do
+  domain_args="-d '$domain'"
+  echo "-> Requesting Let's Encrypt certificate for $domain ⏳"
+  docker_compose run --rm --entrypoint "\
   certbot certonly --webroot -w /var/www/certbot \
     $staging_arg \
     $([ "$interactive" -ne 1 ] && echo '--non-interactive') \
@@ -120,7 +143,5 @@ docker-compose run --rm --entrypoint "\
     --agree-tos \
     --debug-challenges \
     --force-renewal" certbot
-echo
-
-echo "### Reloading nginx..."
-docker-compose exec $([ "$interactive" -ne 1 ] && echo "-T") nginx nginx -s reload
+  echo
+done
