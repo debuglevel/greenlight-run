@@ -29,3 +29,7 @@ RAILS_LOG_TO_STDOUT=true
 # OPENID_CONNECT_CLIENT_SECRET=
 # OPENID_CONNECT_ISSUER=
 # OPENID_CONNECT_REDIRECT=
+
+# Prefix for the applications root URL.
+# Useful for deploying the application to a subdirectory.
+#RAILS_RELATIVE_URL_ROOT=/b
